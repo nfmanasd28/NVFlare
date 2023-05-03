@@ -15,6 +15,7 @@ import logging
 import random
 import socket
 import ssl
+import base64
 from ssl import SSLContext
 from typing import Any, Optional
 from urllib.parse import parse_qsl, urlencode, urlparse
@@ -258,3 +259,15 @@ def get_tcp_urls(scheme: str, resources: dict) -> (str, str):
     connect_url = f"{scheme}://{host}:{port}"
 
     return connect_url, listening_url
+
+def get_basic_auth_details(authDetails):
+    access_key = authDetails.get("access_key", "")
+    secret_key = authDetails.get("secret_key", "")
+
+    auth = ''
+    if access_key != "" and secret_key != "":
+        key = '%s:%s' % (access_key, secret_key)
+        auth = base64.standard_b64encode(key.encode('utf-8')).decode('utf-8')
+
+    return auth 
+

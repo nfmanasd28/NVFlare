@@ -23,14 +23,17 @@ class StreamerStub(object):
     """Interface exported by the server.
     """
 
-    def __init__(self, channel):
+    def __init__(self, channel, method_prefix=''):
         """Constructor.
 
         Args:
             channel: A grpc.Channel.
         """
+        method = '/streamer.Streamer/Stream'
+        if method_prefix:
+            method = method_prefix + method
         self.Stream = channel.stream_stream(
-                '/streamer.Streamer/Stream',
+                method,
                 request_serializer=Frame.SerializeToString,
                 response_deserializer=Frame.FromString,
                 )

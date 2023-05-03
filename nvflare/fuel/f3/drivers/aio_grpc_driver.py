@@ -34,7 +34,7 @@ from nvflare.security.logging import secure_format_exception, secure_format_trac
 from .base_driver import BaseDriver
 from .driver_params import DriverCap, DriverParams
 from .grpc.streamer_pb2 import Frame
-from .net_utils import MAX_FRAME_SIZE, get_address, get_tcp_urls, ssl_required
+from .net_utils import MAX_FRAME_SIZE, get_address, get_tcp_urls, ssl_required, get_basic_auth_details
 
 GRPC_DEFAULT_OPTIONS = [
     ("grpc.max_send_message_length", MAX_FRAME_SIZE),
@@ -237,9 +237,9 @@ class AioGrpcDriver(BaseDriver):
         self.options = GRPC_DEFAULT_OPTIONS
         self.logger = logging.getLogger(self.__class__.__name__)
         configurator = CommConfigurator()
-        config = configurator.get_config()
-        if config:
-            my_params = config.get("grpc")
+        self.config = configurator.get_config()
+        if self.config:
+            my_params = self.config.get("grpc")
             if my_params:
                 self.options = my_params.get("options")
         self.logger.debug(f"GRPC Config: options={self.options}")
@@ -294,12 +294,29 @@ class AioGrpcDriver(BaseDriver):
                 grpc_channel = grpc.aio.secure_channel(
                     address, options=self.options, credentials=self.get_grpc_client_credentials(params)
                 )
+            elif self.config and self.config.get("connection_mode", "") == "haproxy":
+                self.logger.info("Establishing a GRPC secure connection without the certificates")
+                credentials = grpc.ssl_channel_credentials()
+                auth_metadata = self.get_auth_metadata_callback()
+                if auth_metadata:
+                    basic_auth_creds = grpc.metadata_call_credentials(lambda _, callback: callback(auth_metadata, None), name='basic_auth')
+                    self.logger.info("Created a secure basic auth connection")
+                creds = grpc.composite_channel_credentials(credentials, basic_auth_creds)
+                grpc_channel = grpc.aio.secure_channel(address, options=self.options, credentials=creds)
             else:
                 grpc_channel = grpc.aio.insecure_channel(address, options=self.options)
 
             async with grpc_channel as channel:
                 self.logger.debug(f"CLIENT: connected to {address}")
-                stub = StreamerStub(channel)
+                method_prefix = ''
+                if self.config:
+                    organization_id = self.config.get("organization_id", "")
+                    project_id = self.config.get("project_id", "")
+                    if organization_id and project_id:
+                        method_prefix = "/org/" + organization_id + "/project/" + project_id
+                        self.logger.info("CLIENT: Connecting via the organization and project")
+
+                stub = StreamerStub(channel, method_prefix)
                 self.logger.debug("CLIENT: got stub!")
                 conn_props = {DriverParams.PEER_ADDR.value: address}
 
