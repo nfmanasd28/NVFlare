@@ -266,6 +266,16 @@ class AioGrpcDriver(BaseDriver):
                 conn_ctx.error = f"failed to start server: {type(ex)}: {secure_format_exception(ex)}"
         conn_ctx.waiter.set()
 
+    def get_auth_metadata_callback(self):
+        metadata = []
+
+        if self.config and self.config.get("auth_details", {}):
+            auth_details = self.config["auth_details"]
+            encoded_credentials = get_basic_auth_details(auth_details)
+            metadata = [('authorization', f'Basic {encoded_credentials}')]
+
+        return metadata
+
     def listen(self, connector: ConnectorInfo):
         self.logger.debug(f"listen called from thread {threading.current_thread().name}")
         self.connector = connector
