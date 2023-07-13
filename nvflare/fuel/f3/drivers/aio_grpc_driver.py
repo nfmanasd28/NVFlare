@@ -269,10 +269,17 @@ class AioGrpcDriver(BaseDriver):
     def get_auth_metadata_callback(self):
         metadata = []
 
-        if self.config and self.config.get("auth_details", {}):
-            auth_details = self.config["auth_details"]
-            encoded_credentials = get_basic_auth_details(auth_details)
-            metadata = [('authorization', f'Basic {encoded_credentials}')]
+        access_key = os.environ.get("NVFLARE_HAPROXY_ACCESS_KEY", None)
+        secret_key = os.environ.get("NVFLARE_HAPROXY_SECRET_KEY", None)
+
+        if access_key is None:
+            self.logger.error("The environment variable NVFLARE_HAPROXY_ACCESS_KEY dosen't exist!")
+        if secret_key is None:
+            self.logger.error("The environment variable NVFLARE_HAPROXY_SECRET_KEY dosen't exist!")
+
+        auth_details = {"access_key": access_key, "secret_key": secret_key}
+        encoded_credentials = get_basic_auth_details(auth_details)
+        metadata = [('authorization', f'Basic {encoded_credentials}')]
 
         return metadata
 
