@@ -15,6 +15,7 @@ import asyncio
 import logging
 import threading
 import time
+import os
 from typing import Any, Dict, List
 
 import grpc
@@ -269,13 +270,13 @@ class AioGrpcDriver(BaseDriver):
     def get_auth_metadata_callback(self):
         metadata = []
 
-        access_key = os.environ.get("NVFLARE_HAPROXY_ACCESS_KEY", None)
-        secret_key = os.environ.get("NVFLARE_HAPROXY_SECRET_KEY", None)
+        access_key = os.environ.get("NFERENCE_USER", None)
+        secret_key = os.environ.get("NFERENCE_TOKEN", None)
 
         if access_key is None:
-            self.logger.error("The environment variable NVFLARE_HAPROXY_ACCESS_KEY dosen't exist!")
+            self.logger.error("The environment variable NFERENCE_USER dosen't exist!")
         if secret_key is None:
-            self.logger.error("The environment variable NVFLARE_HAPROXY_SECRET_KEY dosen't exist!")
+            self.logger.error("The environment variable NFERENCE_TOKEN dosen't exist!")
 
         auth_details = {"access_key": access_key, "secret_key": secret_key}
         encoded_credentials = get_basic_auth_details(auth_details)
